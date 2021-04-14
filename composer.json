@@ -1,0 +1,11 @@
+{
+    "name": "ctzjj/phicomm_r1_asr_proxy",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src"
+        }
+    },
+    "require": {
+        "guzzlehttp/guzzle": "^7.3"
+    }
+}

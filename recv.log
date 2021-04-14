@@ -1,0 +1,72 @@
+ cn.yunzhisheng.music
+ data.result.musicinfo[musicinfo]
+
+
+ @JSONField(name = "count")
+  @SerializedName("count")
+  int count;
+
+  @JSONField(name = "dataSourceName")
+  @SerializedName("dataSourceName")
+  String dataSourceName;
+
+  @JSONField(name = "errorCode")
+  @SerializedName("errorCode")
+  int errorCode;
+
+  @JSONField(name = "musicinfo")
+  @SerializedName("musicinfo")
+  List<Music> musicinfo = Collections.emptyList();
+
+  @JSONField(name = "searchType")
+  @SerializedName("searchType")
+  String searchType;
+
+  @JSONField(name = "updateTime")
+  @SerializedName("updateTime")
+  String updateTime;
+
+
+@JSONField(name = "album")
+    @SerializedName("album")
+    String album;
+    
+    @JSONField(name = "artist")
+    @SerializedName("artist")
+    String artist;
+    
+    @JSONField(name = "duration")
+    @SerializedName("duration")
+    int duration;
+    
+    @JSONField(name = "errorCode")
+    @SerializedName("errorCode")
+    int errorCode;
+    
+    @JSONField(name = "hdImgUrl")
+    @SerializedName("hdImgUrl")
+    String hdImgUrl;
+    
+    @JSONField(name = "id")
+    @SerializedName("id")
+    String id;
+    
+    @JSONField(name = "imgUrl")
+    @SerializedName("imgUrl")
+    String imgUrl;
+    
+    @JSONField(name = "isCollected")
+    @SerializedName("isCollected")
+    boolean isCollected;
+    
+    @JSONField(name = "lyric")
+    @SerializedName("lyric")
+    String mLyric;
+    
+    @JSONField(name = "title")
+    @SerializedName("title")
+    String title;
+    
+    @JSONField(name = "url")
+    @SerializedName("url")
+    String url;
