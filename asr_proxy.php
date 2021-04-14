@@ -5,7 +5,7 @@
  * port 80
  * 这个域名有两个连接类型 http  tcp（websocket？）
  */
-//创建Server对象，监听 127.0.0.1:9501 端口
+
 use Swoole\Coroutine\Client;
 use App\Util\DataUtil;
 use App\Provider\MusicProvider;
@@ -24,7 +24,7 @@ function client ($server, $fd, $data) {
             $bodyLen = $matched[1] ?? 0;
             return intval($headerLen + $bodyLen);
         },
-        'package_max_length'  => 1024 * 1024 * 5,  //协议最大长度
+        'package_max_length'  => 1024 * 1024 * 5,
     ));
     if (!$client->connect('47.102.50.144', 80, -1))
     {
@@ -49,18 +49,18 @@ $server->on('WorkerStart', function($server, $workerId) {
     include_once "./vendor/autoload.php";
 });
 
-//监听连接进入事件
+
 $server->on('Connect', function ($server, $fd) {
 
 });
 
-//监听数据接收事件
+
 $server->on('Receive', function ($server, $fd, $reactor_id, $data) {
     // var_dump($data);
     client($server, $fd, $data);
 });
 
-//监听连接关闭事件
+
 $server->on('Close', function ($server, $fd) {
 
 });
