@@ -1,0 +1,3 @@
+1、
+问：几点了
+返回： {"code":"ANSWER","originIntent":{"nluSlotInfos":[]},"history":"cn.yunzhisheng.calendar","source":"nlu","uniCarRet":{"result":[],"returnCode":609,"message":"aios-home.hivoice.cn"},"asr_recongize":"几点了。","rc":0,"general":{"style":"calendar","text":"当前时间：16点35分","type":"T"},"returnCode":0,"audioUrl":"http://asrv3.hivoice.cn/trafficRouter/r/aImp3k","retTag":"nlu","servichisheng.chat","nluProcessTime":"87","text":"几点了","responseId":"bd241fda508e4fe2bd4bc27ea72f5742"}

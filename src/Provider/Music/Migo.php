@@ -18,7 +18,7 @@ class Migo
         'accept' => 'application/json, text/javascript, */*; q=0.01',
         'accept-encoding' => 'gzip, deflate',
         'accept-language' => 'zh-CN,zh;q=0.9',
-        'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
+        'user-agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1'
     ];
 
     public function __construct()
@@ -46,7 +46,6 @@ class Migo
         $format -> setTotal(count($resp['musics']));
         $format->setPageSize($pageSize);
         $musiclist = new ItemList();
-
         foreach ($resp['musics'] as $music) {
             $item = new Item();
             $item->setAlbum($music['albumName']);
