@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="78be6288-341b-46a0-8d52-69d1338b5f1f" name="Default Changelist" comment="" />
+    <list default="true" id="78be6288-341b-46a0-8d52-69d1338b5f1f" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/Phicomm_R1_Proxy.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Phicomm_R1_Proxy.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -18,13 +21,13 @@
   </component>
   <component name="PhpWorkspaceProjectConfiguration">
     <include_path>
-      <path value="$PROJECT_DIR$/vendor/ralouphie/getallheaders" />
-      <path value="$PROJECT_DIR$/vendor/psr/http-client" />
-      <path value="$PROJECT_DIR$/vendor/psr/http-message" />
-      <path value="$PROJECT_DIR$/vendor/composer" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/guzzle" />
-      <path value="$PROJECT_DIR$/vendor/guzzlehttp/psr7" />
+      <path value="$PROJECT_DIR$/vendor/ralouphie/getallheaders" />
+      <path value="$PROJECT_DIR$/vendor/composer" />
+      <path value="$PROJECT_DIR$/vendor/psr/http-message" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/promises" />
+      <path value="$PROJECT_DIR$/vendor/psr/http-client" />
+      <path value="$PROJECT_DIR$/vendor/guzzlehttp/psr7" />
     </include_path>
   </component>
   <component name="ProjectId" id="1wfEMVpYq4kvs8cP84I5xsG94wy" />
@@ -76,12 +79,24 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1628841194758</updated>
-      <workItem from="1628841196674" duration="20602000" />
+      <workItem from="1628841196674" duration="21141000" />
     </task>
+    <task id="LOCAL-00001" summary="添加网易云音乐">
+      <created>1628995389511</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1628995389511</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="添加网易云音乐" />
+    <option name="LAST_COMMIT_MESSAGE" value="添加网易云音乐" />
   </component>
   <component name="WindowStateProjectService">
     <state x="597" y="315" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1628843751090">
@@ -92,10 +107,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="726" y="253" key="#com.jetbrains.php.actions.copyPaste.importReferences.PhpImportReferencesDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1628990038112" />
-    <state x="692" y="107" key="CommitChangelistDialog2" timestamp="1628995163484">
+    <state x="692" y="107" key="CommitChangelistDialog2" timestamp="1628995389163">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="692" y="107" key="CommitChangelistDialog2/0.0.1920.1040@0.0.1920.1040" timestamp="1628995163484" />
+    <state x="692" y="107" key="CommitChangelistDialog2/0.0.1920.1040@0.0.1920.1040" timestamp="1628995389163" />
     <state x="944" y="216" key="FileChooserDialogImpl" timestamp="1628845057235">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -108,9 +123,9 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="940" y="593" key="NewPhpFileDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1628989988395" />
-    <state x="1013" y="243" key="Vcs.Push.Dialog.v2" timestamp="1628995248476">
+    <state x="1013" y="243" key="Vcs.Push.Dialog.v2" timestamp="1628995402579">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="1013" y="243" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1628995248476" />
+    <state x="1013" y="243" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1628995402579" />
   </component>
 </project>
