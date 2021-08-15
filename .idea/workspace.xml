@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="78be6288-341b-46a0-8d52-69d1338b5f1f" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/Provider/Music/Netease.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Provider/MusicProvider.php" beforeDir="false" afterPath="$PROJECT_DIR$/src/Provider/MusicProvider.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.php" beforeDir="false" afterPath="$PROJECT_DIR$/test.php" afterDir="false" />
-    </list>
+    <list default="true" id="78be6288-341b-46a0-8d52-69d1338b5f1f" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -80,7 +76,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1628841194758</updated>
-      <workItem from="1628841196674" duration="20329000" />
+      <workItem from="1628841196674" duration="20602000" />
     </task>
     <servers />
   </component>
@@ -112,9 +108,9 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="940" y="593" key="NewPhpFileDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1628989988395" />
-    <state x="1013" y="243" key="Vcs.Push.Dialog.v2" timestamp="1628910564342">
+    <state x="1013" y="243" key="Vcs.Push.Dialog.v2" timestamp="1628995248476">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="1013" y="243" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1628910564342" />
+    <state x="1013" y="243" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1628995248476" />
   </component>
 </project>
