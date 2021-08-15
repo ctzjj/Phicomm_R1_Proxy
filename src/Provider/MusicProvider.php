@@ -1,6 +1,7 @@
 <?php
 namespace App\Provider;
 
+use App\Provider\Music\Netease;
 use App\Util\DataUtil;
 use App\Provider\Music\Migo;
 use App\Provider\Music\Format;
@@ -53,7 +54,7 @@ class MusicProvider
         $format = new Format();
         $format->setSemantic($body['semantic']);
         $format->setText($this->keyword)->setAsrText($this->keyword);
-        (new Migo())->search($this->keyword, $format);
+        (new Netease())->search($this->keyword, $format);
         $this->dataUtil->setBody($format->getData());
     }
 }
