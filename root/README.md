@@ -16,7 +16,7 @@ Permissive，然后通过 `setprop ctl.start` 让 init 以 root 执行我们放�
 | `rootd.c` | 极简 root shell 服务（监听 31337，`exec /system/bin/sh`） |
 | `su.c` | 极简 setuid-root su |
 | `root.sh` | 提权后处理：remount rw、安装 su/.rd、启动 rootd |
-| `persist.sh` | 可选：安装开机自动提权（替换 `/system/bin/rksmbd` + `build.prop` 触发器） |
+| `persist.sh` | 开机自动提权安装（`onkey` 成功后自动以 root 执行；也可手动执行） |
 | `onkey/` | 一键获取 root（Windows 脚本 + 设备端脚本 + 预编译 ARM 文件） |
 
 ## 原理要点
@@ -44,18 +44,29 @@ chunk 布局必须为 `{target, len, &test, 4, ...}`（in-place 改写后同一�
 
 见 [onkey/README.md](onkey/README.md)。
 
-## 持久化（可选，需已 root）
+## 持久化（一键脚本自动完成）
 
-```sh
-# 设备上以 root 执行，参数为包含 exp_boot / rootd / su 的目录
-sh persist.sh /sdcard/r1root
-```
+`onkey` 在提权成功后**自动**执行持久化（无需再手动运行）：
+
+1. 利用成功 → SELinux `Permissive`
+2. `setprop ctl.start cifsmanager` → init(root) 执行 `/data/etc/cifsmanager.sh`：
+   - 运行 `persist.sh` 安装开机持久化
+   - `mount -o remount,rw /system`（**保持 /system 可写**）
+   - 启动 rootd
 
 原理：把 `/system/bin/rksmbd` 换成 `exp_boot`；`build.prop` 追加
 `sys.rksmbd.start=1`，开机时 init 的 `on property:sys.rksmbd.start=1 → start startsamba`
 会在 **init 域（unconfined）** 执行它 → 利用成功 → Permissive + 拉起 rootd。
 同时把 `/system/bin/rild` 换成 rootd 作为双保险（需 `chcon u:object_r:rild_exec:s0`）。
 所有被替换文件均有 `.r1bak` 备份。
+
+手动执行（如已在别处拿到 root）：
+
+```sh
+# 参数为包含 exp_boot / rootd / su 的目录
+sh persist.sh /sdcard/r1root
+mount -o remount,rw /system   # 可选：让 /system 保持可写
+```
 
 ## 工厂 / 配网模式（救砖与初始配置）
 
