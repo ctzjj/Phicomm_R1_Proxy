@@ -17,7 +17,7 @@ type Source interface {
 
 // DefaultSources returns the enabled providers.
 func DefaultSources() []Source {
-	return []Source{NewNetease(), NewKuwo()}
+	return []Source{NewNetease(), NewKuwo(), NewMigu()}
 }
 
 // SearchAll queries every source concurrently, merges the results and keeps

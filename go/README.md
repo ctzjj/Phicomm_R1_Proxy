@@ -129,7 +129,7 @@ r1tool audiodump -dir ./dump -out ./audio
 | 网易云 | ✅ | ✅ 320k | `linux/forward` + `song/enhance/player/url` |
 | 酷我 | ✅ | ✅ 320k | `www.kuwo.cn/search/searchMusicBykeyWord` + `mobi.s type=convert_url_with_sign`（需随机国内 IP 头；旧的 `anti.s` 只有试听，已弃用） |
 | 酷狗 | ✅ | ❌ 需登录态 | `mobilecdn` 搜索可用，`play/getdata` 返回 30020 |
-| 咪咕 | ❌ | — | 旧接口已下线（301 到 v5 SPA） |
+| 咪咕 | ✅ | ✅ 128k | `pd.musicapp.migu.cn` 搜索 + `c.musicapp.migu.cn .../listen-url?toneFlag=PQ`（HQ/SQ 需登录，PQ 免登录可用） |
 | GD Studio | ✅ | ⚠️ 本机被 RST | `music-api.gdstudio.xyz`，独立网易云路由；本网络下 Cloudflare 连接被重置，默认未启用（`DefaultSources` 可自行加入） |
 
 > 实测（2026-10）：**无凭据时只有网易云能返回完整曲目**。酷我只有试听片段（已过滤），

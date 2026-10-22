@@ -110,7 +110,7 @@ SEARCH_ARTIST / SEARCH_CATEGORY（或我们兜底）
 | 酷我（www.kuwo.cn 搜索 + mobi.s `convert_url_with_sign`） | ✅ | ✅ 320k（需随机国内 IP 头） | 主力源之一；旧的 `anti.s` 只返回试听，已弃用 |
 | 酷狗（mobilecdn 搜索 + m.kugou getSongInfo） | ✅ | ❌ url 为空（需登录） | 未启用 |
 | QQ 音乐（musicu.fcg） | ❌ 需登录 | ❌ vkey 405 | 未启用 |
-| 咪咕 | ❌ 旧接口下线 | — | 已移除 |
+| 咪咕（pd.musicapp 搜索 + listen-url `toneFlag=PQ`） | ✅ | ✅ 128k（HQ/SQ 需登录） | 免登录可用，已启用 |
 
 **覆盖率取决于曲目的版权/会员状态**：免费曲目基本都能出 320k（实测「经典老歌」10 首全可播）；
 冷门/会员曲目（如部分陈绮贞）在网易云拿不到 URL，其它平台又只有试听或需要登录 → 只能等有凭据的音源接入。

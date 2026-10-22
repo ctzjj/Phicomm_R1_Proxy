@@ -17,6 +17,7 @@ type probeResult struct {
 	lat   time.Duration
 	ok    bool
 	plain bool
+	nginx bool
 	size  int64
 	brate int
 }
@@ -73,6 +74,9 @@ func ProbeOrder(ctx context.Context, items []Item) []Item {
 		if good[i].plain != good[j].plain {
 			return good[i].plain
 		}
+		if good[i].nginx != good[j].nginx {
+			return good[i].nginx
+		}
 		if good[i].it.Bitrate != good[j].it.Bitrate {
 			return good[i].it.Bitrate > good[j].it.Bitrate
 		}
@@ -122,6 +126,10 @@ func probeOne(ctx context.Context, it Item) probeResult {
 	}
 	srv := strings.ToLower(resp.Header.Get("Server"))
 	plain := !strings.Contains(srv, "openresty") && resp.Header.Get("Content-Disposition") == ""
+	// The R1 player starts reliably from plain nginx CDNs; tencent-cos and
+	// object-store backends sometimes prepare but never start when the
+	// previous track was paused.
+	nginx := strings.Contains(srv, "nginx")
 	size := contentRangeTotal(resp.Header.Get("Content-Range"))
 	if size == 0 {
 		size = resp.ContentLength
@@ -148,7 +156,7 @@ func probeOne(ctx context.Context, it Item) probeResult {
 			return probeResult{it: it}
 		}
 	}
-	return probeResult{it: it, lat: lat, ok: true, plain: plain, size: size, brate: brate}
+	return probeResult{it: it, lat: lat, ok: true, plain: plain, nginx: nginx, size: size, brate: brate}
 }
 
 // looksLikeAudio sniffs the container magic of the first bytes.

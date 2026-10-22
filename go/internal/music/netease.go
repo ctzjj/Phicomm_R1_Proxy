@@ -84,8 +84,17 @@ func (n *Netease) Search(ctx context.Context, keyword string, limit int) ([]Item
 		},
 	}
 	var res neteaseSearchResult
+	// The linux/forward gateway occasionally answers with an empty list when
+	// several sources are queried concurrently, so retry once.
 	if err := n.call(ctx, payload, &res); err != nil {
 		return nil, err
+	}
+	if len(res.Result.Songs) == 0 {
+		time.Sleep(300 * time.Millisecond)
+		var retry neteaseSearchResult
+		if err := n.call(ctx, payload, &retry); err == nil {
+			res = retry
+		}
 	}
 	items := make([]Item, 0, limit)
 	for _, s := range res.Result.Songs {
