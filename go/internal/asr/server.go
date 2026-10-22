@@ -28,15 +28,16 @@ import (
 
 // Server is a one-request-at-a-time HTTP relay over plain TCP.
 type Server struct {
-	Addr     string // ":80"
-	Upstream string // "47.102.50.144:80"
-	Verbose  bool
-	DumpDir  string // when set, every request/response is written to this directory
-	AudioDir string // when set, each utterance is written as <dir>/uttNN_<sid>.ogg
-	Forward  string // when set, each utterance Ogg is POSTed to this URL
-	NoMusic  bool   // when set, music answers are passed through untouched
-	seq      uint64
-	cap      *capture
+	Addr      string // ":80"
+	Upstream  string // "47.102.50.144:80"
+	Verbose   bool
+	DumpDir   string // when set, every request/response is written to this directory
+	AudioDir  string // when set, each utterance is written as <dir>/uttNN_<sid>.ogg
+	Forward   string // when set, each utterance Ogg is POSTed to this URL
+	NoMusic   bool   // when set, music answers are passed through untouched
+	MediaBase string // e.g. http://192.168.123.151:8080 ; music urls are rewritten to <base>/media?u=...
+	seq       uint64
+	cap       *capture
 }
 
 // message is one HTTP message: raw is what gets forwarded, hdr the header
@@ -94,6 +95,11 @@ func (s *Server) handle(c net.Conn) {
 		seq := atomic.AddUint64(&s.seq, 1)
 		if s.DumpDir != "" {
 			s.dump(seq, "req", msg.hdr, msg.body)
+		}
+		if isMediaRequest(msg.hdr) {
+			_ = c.SetWriteDeadline(time.Now().Add(60 * time.Second))
+			serveMedia(c, msg)
+			return
 		}
 		if s.cap != nil {
 			s.cap.add(msg.hdr, msg.body)
@@ -167,10 +173,11 @@ func (s *Server) process(msg *message) []byte {
 		return resp.raw
 	}
 	p := music.New(d)
+	p.MediaBase = s.MediaBase
 	if !p.IsMusic() {
 		return resp.raw
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := p.Search(ctx); err != nil {
 		log.Printf("[asr] search %q: %v", p.Keyword(), err)
@@ -245,11 +252,17 @@ func readMessage(br *bufio.Reader, max int) (*message, error) {
 	}
 	cl, ok := contentLength(hdr)
 	if !ok {
-		rest, err := io.ReadAll(io.LimitReader(br, int64(max)))
-		if err != nil {
-			return nil, err
+		// A response without Content-Length runs until the connection closes,
+		// but a request without one simply has no body (reading to EOF would
+		// hang on keep-alive connections such as the /media endpoint).
+		if bytes.HasPrefix(hdr, []byte("HTTP/")) {
+			rest, err := io.ReadAll(io.LimitReader(br, int64(max)))
+			if err != nil {
+				return nil, err
+			}
+			return &message{raw: append(hdr, rest...), hdr: hdr, body: rest}, nil
 		}
-		return &message{raw: append(hdr, rest...), hdr: hdr, body: rest}, nil
+		return &message{raw: hdr, hdr: hdr}, nil
 	}
 	if cl <= 0 {
 		return &message{raw: hdr, hdr: hdr}, nil

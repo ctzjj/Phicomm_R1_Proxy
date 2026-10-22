@@ -9,8 +9,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -76,6 +78,42 @@ func runBind(args []string) error {
 	return s.ListenAndServe()
 }
 
+// mediaBaseOf returns the base URL the speaker should use for /media.
+// An explicit override wins; otherwise the first ordinary LAN IPv4 address
+// (preferring 192.168.x) plus the -addr port is used.
+func mediaBaseOf(listen, override string) string {
+	if override != "" {
+		return strings.TrimRight(override, "/")
+	}
+	_, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		port = "8080"
+	}
+	var fallback string
+	ifaces, _ := net.Interfaces()
+	for _, ifc := range ifaces {
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			ip := ipnet.IP.To4()
+			if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+				continue
+			}
+			base := "http://" + ip.String() + ":" + port
+			if strings.HasPrefix(ip.String(), "192.168.") {
+				return base
+			}
+			if fallback == "" {
+				fallback = base
+			}
+		}
+	}
+	return fallback
+}
+
 func runASR(args []string) error {
 	fs := flag.NewFlagSet("asr", flag.ExitOnError)
 	addr := fs.String("addr", ":80", "listen address (must be reachable as asrv3.hivoice.cn)")
@@ -85,12 +123,14 @@ func runASR(args []string) error {
 	audioDir := fs.String("audio-dir", "", "write each utterance as Ogg/Opus into this directory")
 	forward := fs.String("forward", "", "POST each utterance Ogg to this URL (audio/ogg)")
 	noMusic := fs.Bool("no-music", false, "pass music answers through without replacing them")
+	mediaBase := fs.String("media-base", "", "rewrite music urls through <base>/media (default: auto from the LAN ip and -addr port)")
 	_ = fs.Parse(args)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	s := &asr.Server{Addr: *addr, Upstream: *upstream, Verbose: *verbose, DumpDir: *dumpDir,
-		AudioDir: *audioDir, Forward: *forward, NoMusic: *noMusic}
+		AudioDir: *audioDir, Forward: *forward, NoMusic: *noMusic,
+		MediaBase: mediaBaseOf(*addr, *mediaBase)}
 	return s.ListenAndServe(ctx)
 }
 

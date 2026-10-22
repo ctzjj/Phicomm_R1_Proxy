@@ -2,6 +2,7 @@ package music
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"regexp"
 	"strings"
@@ -14,6 +15,10 @@ import (
 type Provider struct {
 	data    *util.Data
 	keyword string
+	// MediaBase (e.g. http://192.168.123.151:8080) turns every track url into
+	// a request through our own /media endpoint, so the speaker always sees
+	// clean headers regardless of the upstream CDN.
+	MediaBase string
 }
 
 // New returns a Provider for one ASR response.
@@ -80,6 +85,11 @@ func (p *Provider) Search(ctx context.Context) error {
 		p.data.Body = f // keep the template so the speaker still gets a valid answer
 		return errs[0]
 	}
+	// Probing costs a real network round-trip per candidate; cap the list
+	// so the whole answer still fits in the speaker timeout.
+	if len(items) > 12 {
+		items = items[:12]
+	}
 	items = ProbeOrder(ctx, items)
 	if len(items) == 0 {
 		p.data.Body = f
@@ -87,6 +97,16 @@ func (p *Provider) Search(ctx context.Context) error {
 	}
 	f.SetTotal(len(items))
 	f.SetItems(items)
+	if p.MediaBase != "" {
+		for i := range f.Data.Result.MusicInfo {
+			u := f.Data.Result.MusicInfo[i].URL
+			if u == "" {
+				continue
+			}
+			f.Data.Result.MusicInfo[i].URL = p.MediaBase + "/media?u=" +
+				base64.RawURLEncoding.EncodeToString([]byte(u))
+		}
+	}
 	p.data.Body = f
 	return nil
 }

@@ -16,8 +16,7 @@ type probeResult struct {
 	it    Item
 	lat   time.Duration
 	ok    bool
-	plain bool
-	nginx bool
+	score int
 	size  int64
 	brate int
 }
@@ -37,10 +36,13 @@ type probeResult struct {
 func ProbeOrder(ctx context.Context, items []Item) []Item {
 	ch := make(chan probeResult, len(items))
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
 	for _, it := range items {
 		wg.Add(1)
 		go func(it Item) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			ch <- probeOne(ctx, it)
 		}(it)
 	}
@@ -63,19 +65,9 @@ func ProbeOrder(ctx context.Context, items []Item) []Item {
 	if len(good) == 0 {
 		return items
 	}
-	hasPlain := false
-	for _, r := range good {
-		if r.plain {
-			hasPlain = true
-			break
-		}
-	}
 	sort.Slice(good, func(i, j int) bool {
-		if good[i].plain != good[j].plain {
-			return good[i].plain
-		}
-		if good[i].nginx != good[j].nginx {
-			return good[i].nginx
+		if good[i].score != good[j].score {
+			return good[i].score > good[j].score
 		}
 		if good[i].it.Bitrate != good[j].it.Bitrate {
 			return good[i].it.Bitrate > good[j].it.Bitrate
@@ -84,15 +76,24 @@ func ProbeOrder(ctx context.Context, items []Item) []Item {
 	})
 	out := make([]Item, 0, len(good))
 	for _, r := range good {
-		if hasPlain && !r.plain {
-			continue
-		}
 		out = append(out, r.it)
 	}
 	if len(out) > 10 {
 		out = out[:10]
 	}
 	return out
+}
+
+// probeClient is shared by every probe: a fresh client per candidate would
+// open dozens of TLS connections at once and time out under load.
+var probeClient = &http.Client{
+	Timeout: 3 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        64,
+		MaxIdleConnsPerHost: 16,
+		IdleConnTimeout:     30 * time.Second,
+		DisableCompression:  true,
+	},
 }
 
 // probeOne fetches the first 2 KiB of the stream and checks that it really is
@@ -103,7 +104,7 @@ func probeOne(ctx context.Context, it Item) probeResult {
 		return probeResult{it: it}
 	}
 	req.Header.Set("Range", "bytes=0-2047")
-	cl := &http.Client{Timeout: 2500 * time.Millisecond}
+	cl := probeClient
 	t0 := time.Now()
 	resp, err := cl.Do(req)
 	if err != nil {
@@ -125,13 +126,20 @@ func probeOne(ctx context.Context, it Item) probeResult {
 		return probeResult{it: it}
 	}
 	srv := strings.ToLower(resp.Header.Get("Server"))
-	plain := !strings.Contains(srv, "openresty") && resp.Header.Get("Content-Disposition") == ""
-	// The R1 player starts reliably from plain nginx CDNs; tencent-cos and
-	// object-store backends sometimes prepare but never start when the
-	// previous track was paused.
-	nginx := strings.Contains(srv, "nginx")
+	// CDN compatibility score for the R1 player: nginx streams start most
+	// reliably, object stores (openresty + Content-Disposition/x-nos-*) can
+	// prepare without ever starting.
+	score := 1
+	if strings.Contains(srv, "nginx") {
+		score = 2
+	}
+	if strings.Contains(srv, "openresty") {
+		score = 0
+	}
 	size := contentRangeTotal(resp.Header.Get("Content-Range"))
-	if size == 0 {
+	if size == 0 && resp.ContentLength > 64*1024 {
+		// Only trust Content-Length when it looks like a whole file: a ranged
+		// response reports just the requested bytes (e.g. 2048).
 		size = resp.ContentLength
 	}
 	if size > 0 && size < 256*1024 { // an error page or a jingle, not a track
@@ -156,7 +164,7 @@ func probeOne(ctx context.Context, it Item) probeResult {
 			return probeResult{it: it}
 		}
 	}
-	return probeResult{it: it, lat: lat, ok: true, plain: plain, nginx: nginx, size: size, brate: brate}
+	return probeResult{it: it, lat: lat, ok: true, score: score, size: size, brate: brate}
 }
 
 // looksLikeAudio sniffs the container magic of the first bytes.
