@@ -66,6 +66,13 @@ func (n *Netease) Search(ctx context.Context, keyword string, limit int) ([]Item
 	if limit <= 0 || limit > 20 {
 		limit = 20
 	}
+	// Many Netease tracks are VIP-only (privilege.fl == 0) and yield no url,
+	// so look at a wider candidate window and stop once enough playable
+	// tracks are collected.
+	candidates := limit * 4
+	if candidates > 50 {
+		candidates = 50
+	}
 	payload := map[string]any{
 		"method": "POST",
 		"url":    "http://music.163.com/api/cloudsearch/pc",
@@ -73,7 +80,7 @@ func (n *Netease) Search(ctx context.Context, keyword string, limit int) ([]Item
 			"s":      keyword,
 			"type":   "1",
 			"offset": "0",
-			"limit":  limit,
+			"limit":  candidates,
 		},
 	}
 	var res neteaseSearchResult

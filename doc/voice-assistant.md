@@ -1,4 +1,4 @@
-﻿# R1 语音助手调研记录（续接用）
+# R1 语音助手调研记录（续接用）
 
 > 本文记录对 `com.phicomm.speaker.device`（云知声 ANT 引擎）与 `com.phicomm.speaker.player`（echoplayer）
 > 的实测结论、协议细节与已知坑，方便后续继续开发。协议字段以抓包为准。
@@ -100,3 +100,20 @@ SEARCH_ARTIST / SEARCH_CATEGORY（或我们兜底）
 3. 多轮上下文（按 SID + 时间窗关联）
 4. 技能补齐（闹钟/提醒/天气），槽位格式需从 `PhicommAlarmHandler/ReminderHandler` 逆出
 5. 若追求"小爱级"体验（流式、打断、连续对话）→ 路线 B：自建客户端（见对话记录）
+
+## 8. 音源可用性实测（2026-10）
+
+| 音源 | 搜索 | 完整曲目 | 结论 |
+| --- | --- | --- | --- |
+| 网易云（linux/forward + cloudsearch + song/enhance） | ✅ | ✅ 320k（免费曲目） | 主力源 |
+| 网易云（GD Studio `music-api.gdstudio.xyz`） | ✅ | ✅ 320k | 本机网络下 Cloudflare 连接被 RST，默认未启用 |
+| 酷我（www.kuwo.cn 搜索 + mobi.s `convert_url_with_sign`） | ✅ | ✅ 320k（需随机国内 IP 头） | 主力源之一；旧的 `anti.s` 只返回试听，已弃用 |
+| 酷狗（mobilecdn 搜索 + m.kugou getSongInfo） | ✅ | ❌ url 为空（需登录） | 未启用 |
+| QQ 音乐（musicu.fcg） | ❌ 需登录 | ❌ vkey 405 | 未启用 |
+| 咪咕 | ❌ 旧接口下线 | — | 已移除 |
+
+**覆盖率取决于曲目的版权/会员状态**：免费曲目基本都能出 320k（实测「经典老歌」10 首全可播）；
+冷门/会员曲目（如部分陈绮贞）在网易云拿不到 URL，其它平台又只有试听或需要登录 → 只能等有凭据的音源接入。
+
+多源框架已就绪：实现 `music.Source`（`Name`/`Search`）后加入 `DefaultSources()` 即可自动参与
+「并发搜索 → 去重选最优音质 → ranged GET 校验 → 过滤试听 → 按可播/码率/延迟排序」。

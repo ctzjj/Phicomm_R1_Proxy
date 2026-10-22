@@ -136,6 +136,9 @@ func probeOne(ctx context.Context, it Item) probeResult {
 	}
 	// Reject truncated previews: a full track needs roughly
 	// bitrate(kbps) * duration(ms) / 8 bytes.
+	if it.Duration == 0 && size > 0 && brate > 0 {
+		it.Duration = int(size * 8 / int64(brate))
+	}
 	if size > 0 && it.Duration > 0 {
 		expect := int64(96) * int64(it.Duration) / 8 // assume at least 96 kbps
 		if int64(brate) > 96 {

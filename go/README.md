@@ -127,8 +127,13 @@ r1tool audiodump -dir ./dump -out ./audio
 | 音源 | 搜索 | 播放地址 | 说明 |
 | --- | --- | --- | --- |
 | 网易云 | ✅ | ✅ 320k | `linux/forward` + `song/enhance/player/url` |
-| 酷我 | ✅ | ⚠️ 仅试听片段 | `search.kuwo.cn` + `anti.s`（会被大小/时长校验过滤） |
+| 酷我 | ✅ | ✅ 320k | `www.kuwo.cn/search/searchMusicBykeyWord` + `mobi.s type=convert_url_with_sign`（需随机国内 IP 头；旧的 `anti.s` 只有试听，已弃用） |
 | 酷狗 | ✅ | ❌ 需登录态 | `mobilecdn` 搜索可用，`play/getdata` 返回 30020 |
 | 咪咕 | ❌ | — | 旧接口已下线（301 到 v5 SPA） |
+| GD Studio | ✅ | ⚠️ 本机被 RST | `music-api.gdstudio.xyz`，独立网易云路由；本网络下 Cloudflare 连接被重置，默认未启用（`DefaultSources` 可自行加入） |
+
+> 实测（2026-10）：**无凭据时只有网易云能返回完整曲目**。酷我只有试听片段（已过滤），
+> 酷狗/QQ/咪咕需要登录态或付费 API key（Karpov / 妖狐 / GD 高级版）。
+> 有凭据后按同一接口补一个实现即可，多源合并逻辑已就绪。
 
 新增音源只需实现 `music.Source`（`Name` + `Search`）并加入 `DefaultSources()`。
