@@ -17,11 +17,10 @@ import (
 // Ogg/Opus file per utterance and (optionally) forwards it to a downstream
 // ASR / LLM service.
 type capture struct {
-	mu      sync.Mutex
-	dir     string
-	forward string
-	n       int
-	sess    map[string]*session
+	mu   sync.Mutex
+	st   *Store
+	n    int
+	sess map[string]*session
 }
 
 type session struct {
@@ -30,10 +29,27 @@ type session struct {
 	at   time.Time
 }
 
-func newCapture(dir, forward string) *capture {
-	c := &capture{dir: dir, forward: forward, sess: map[string]*session{}}
+func newCapture(st *Store) *capture {
+	c := &capture{st: st, sess: map[string]*session{}}
 	go c.sweep()
 	return c
+}
+
+// FinalizeSID removes and returns the buffered utterance of one session
+// (used by the external-NLU mode, which must answer with its own result).
+func (c *capture) FinalizeSID(hdr []byte) (string, []byte) {
+	sid := audio.SessionID(hdr)
+	if sid == "" {
+		sid = "unknown"
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	s := c.sess[sid]
+	if s == nil || len(s.pkts) == 0 {
+		return "", nil
+	}
+	delete(c.sess, sid)
+	return sid, audio.OggOpus(s.pkts)
 }
 
 // add inspects one intercepted request. It never blocks the proxy.
@@ -90,23 +106,26 @@ func (c *capture) finalizeLocked(s *session) {
 	c.n++
 	packets := s.pkts
 	ogg := audio.OggOpus(packets)
-	name := fmt.Sprintf("utt%02d_%s.ogg", c.n, safeName(s.sid))
-	path := filepath.Join(c.dir, name)
-	if err := os.MkdirAll(c.dir, 0o755); err == nil {
-		if err := os.WriteFile(path, ogg, 0o644); err != nil {
-			log.Printf("[asr] audio write %s: %v", path, err)
-		} else {
-			log.Printf("[asr] utterance %s: %d packets, %.2fs -> %s",
-				s.sid, len(packets), float64(len(packets))*0.02, path)
+	snap := c.st.Snapshot()
+	if snap.AudioDir != "" {
+		name := fmt.Sprintf("utt%02d_%s.ogg", c.n, safeName(s.sid))
+		path := filepath.Join(snap.AudioDir, name)
+		if err := os.MkdirAll(snap.AudioDir, 0o755); err == nil {
+			if err := os.WriteFile(path, ogg, 0o644); err != nil {
+				log.Printf("[asr] audio write %s: %v", path, err)
+			} else {
+				log.Printf("[asr] utterance %s: %d packets, %.2fs -> %s",
+					s.sid, len(packets), float64(len(packets))*0.02, path)
+			}
 		}
 	}
-	if c.forward != "" {
-		go c.post(s.sid, packets, ogg)
+	if snap.Forward != "" {
+		go c.post(snap.Forward, s.sid, packets, ogg)
 	}
 }
 
-func (c *capture) post(sid string, packets [][]byte, ogg []byte) {
-	req, err := http.NewRequest(http.MethodPost, c.forward, bytes.NewReader(ogg))
+func (c *capture) post(forward, sid string, packets [][]byte, ogg []byte) {
+	req, err := http.NewRequest(http.MethodPost, forward, bytes.NewReader(ogg))
 	if err != nil {
 		log.Printf("[asr] forward: %v", err)
 		return
@@ -119,7 +138,7 @@ func (c *capture) post(sid string, packets [][]byte, ogg []byte) {
 	cl := &http.Client{Timeout: 30 * time.Second}
 	resp, err := cl.Do(req)
 	if err != nil {
-		log.Printf("[asr] forward %s: %v", c.forward, err)
+		log.Printf("[asr] forward %s: %v", forward, err)
 		return
 	}
 	defer resp.Body.Close()

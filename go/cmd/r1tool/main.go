@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -19,7 +20,9 @@ import (
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/asr"
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/bind"
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/home"
+	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/logbuf"
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/provision"
+	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/webui"
 )
 
 const usage = `r1tool - Phicomm R1 tools (Go port of the PHP PoCs)
@@ -97,20 +100,73 @@ func mediaBaseOf(listen, override string) string {
 func runASR(args []string) error {
 	fs := flag.NewFlagSet("asr", flag.ExitOnError)
 	addr := fs.String("addr", ":80", "listen address (must be reachable as asrv3.hivoice.cn)")
-	upstream := fs.String("upstream", "47.102.50.144:80", "real ASR server host:port")
+	upstream := fs.String("upstream", "", "real ASR server host:port (default: resolve asrv3.hivoice.cn via -dns)")
+	dnsServer := fs.String("dns", "223.5.5.5:53", "DNS server used to resolve asrv3.hivoice.cn")
 	verbose := fs.Bool("v", false, "log every intercepted answer")
 	dumpDir := fs.String("dump", "", "directory to dump raw request/response (headers, body, hexdump)")
 	audioDir := fs.String("audio-dir", "", "write each utterance as Ogg/Opus into this directory")
 	forward := fs.String("forward", "", "POST each utterance Ogg to this URL (audio/ogg)")
-	noMusic := fs.Bool("no-music", false, "pass music answers through without replacing them")
-	mediaBase := fs.String("media-base", "", "rewrite music urls through <base>/media (default: auto from the LAN ip and -addr port)")
+	music := fs.Bool("music", true, "replace music intents with our multi-source search")
+	mediaBase := fs.String("media-base", "", "rewrite music urls through <base>/media (default: http://aios-home.hivoice.cn:<port>)")
+	nluMode := fs.String("nlu-mode", "default", "default (Yunzhisheng cloud) or custom")
+	nluURL := fs.String("nlu-url", "", "custom NLU endpoint (POST audio/ogg)")
+	nluKey := fs.String("nlu-key", "", "custom NLU api key")
+	nluKeyHeader := fs.String("nlu-key-header", "Authorization", "header carrying the custom NLU key")
+	webPort := fs.Int("web-port", 0, "serve the web console on this port (0 = disabled)")
+	cfgPath := fs.String("config", "r1tool.json", "settings file (created on first save)")
 	_ = fs.Parse(args)
+
+	settings := asr.NewStore(asr.Settings{
+		Upstream:     *upstream,
+		DNS:          *dnsServer,
+		MediaBase:    mediaBaseOf(*addr, *mediaBase),
+		Music:        *music,
+		Forward:      *forward,
+		NLUMode:      asr.NormalizeNLUMode(*nluMode),
+		NLUURL:       *nluURL,
+		NLUKey:       *nluKey,
+		NLUKeyHeader: *nluKeyHeader,
+		AudioDir:     *audioDir,
+		DumpDir:      *dumpDir,
+	})
+	// A saved r1tool.json wins over the flag defaults.
+	if data, err := os.ReadFile(*cfgPath); err == nil {
+		var saved asr.Settings
+		if err := json.Unmarshal(data, &saved); err == nil {
+			settings.Update(saved)
+		}
+	} else {
+		_ = settings // file missing on first run
+	}
+	save := func() error {
+		data, err := json.MarshalIndent(settings.Get(), "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(*cfgPath, data, 0o644)
+	}
+
+	logs := logbuf.New()
+	log.SetOutput(io.MultiWriter(os.Stderr, logs))
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	s := &asr.Server{Addr: *addr, Upstream: *upstream, Verbose: *verbose, DumpDir: *dumpDir,
-		AudioDir: *audioDir, Forward: *forward, NoMusic: *noMusic,
-		MediaBase: mediaBaseOf(*addr, *mediaBase)}
+	s := &asr.Server{Addr: *addr, Verbose: *verbose, Settings: settings}
+
+	if *webPort > 0 {
+		ui := &webui.Server{
+			Addr:     fmt.Sprintf(":%d", *webPort),
+			Settings: settings,
+			Logs:     logs,
+			Status:   s.Status,
+			Save:     save,
+		}
+		go func() {
+			if err := ui.ListenAndServe(); err != nil {
+				log.Printf("[web] %v", err)
+			}
+		}()
+	}
 	return s.ListenAndServe(ctx)
 }
 

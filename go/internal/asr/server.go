@@ -19,25 +19,62 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/audio"
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/music"
 	"github.com/ctzjj/Phicomm_R1_Proxy/go/internal/util"
 )
 
 // Server is a one-request-at-a-time HTTP relay over plain TCP.
 type Server struct {
-	Addr      string // ":80"
-	Upstream  string // "47.102.50.144:80"
-	Verbose   bool
-	DumpDir   string // when set, every request/response is written to this directory
-	AudioDir  string // when set, each utterance is written as <dir>/uttNN_<sid>.ogg
-	Forward   string // when set, each utterance Ogg is POSTed to this URL
-	NoMusic   bool   // when set, music answers are passed through untouched
-	MediaBase string // e.g. http://192.168.123.151:8080 ; music urls are rewritten to <base>/media?u=...
-	seq       uint64
-	cap       *capture
+	Addr     string // ":80"
+	Verbose  bool
+	Settings *Store // live configuration (editable from the web console)
+	seq      uint64
+	cap      *capture
+	dns      *upstreamResolver
+
+	start      time.Time
+	intercepts atomic.Uint64
+	musicHits  atomic.Uint64
+	nluCalls   atomic.Uint64
+	errMu      sync.Mutex
+	lastErr    string
+}
+
+// Status is the snapshot served by the web console.
+type Status struct {
+	Uptime        string `json:"uptime"`
+	Intercepted   uint64 `json:"intercepted"`
+	MusicReplaced uint64 `json:"musicReplaced"`
+	NLUCalls      uint64 `json:"nluCalls"`
+	LastError     string `json:"lastError"`
+}
+
+// Status returns the current counters.
+func (s *Server) Status() Status {
+	s.errMu.Lock()
+	last := s.lastErr
+	s.errMu.Unlock()
+	return Status{
+		Uptime:        time.Since(s.start).Round(time.Second).String(),
+		Intercepted:   s.intercepts.Load(),
+		MusicReplaced: s.musicHits.Load(),
+		NLUCalls:      s.nluCalls.Load(),
+		LastError:     last,
+	}
+}
+
+func (s *Server) setErr(err error) {
+	if err == nil {
+		return
+	}
+	s.errMu.Lock()
+	s.lastErr = err.Error()
+	s.errMu.Unlock()
 }
 
 // message is one HTTP message: raw is what gets forwarded, hdr the header
@@ -62,17 +99,23 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		<-ctx.Done()
 		_ = ln.Close()
 	}()
-	log.Printf("[asr] listening on %s, upstream %s (point asrv3.hivoice.cn here)", addr, s.Upstream)
-	if s.DumpDir != "" {
-		log.Printf("[asr] dumping requests/responses to %s", s.DumpDir)
-	}
-	if s.AudioDir != "" || s.Forward != "" {
-		dir := s.AudioDir
-		if dir == "" {
-			dir = "."
+	s.start = time.Now()
+	snap := s.Settings.Snapshot()
+	s.dns = newUpstreamResolver(snap.DNS)
+	if snap.Upstream == "" {
+		if ip, err := s.dns.Resolve(ctx, snap.DNS); err == nil {
+			log.Printf("[asr] resolved %s -> %s (via %s)", upstreamHost, ip, snap.DNS)
+		} else {
+			log.Printf("[asr] resolve %s failed: %v", upstreamHost, err)
 		}
-		s.cap = newCapture(dir, s.Forward)
-		log.Printf("[asr] audio capture on: dir=%s forward=%q", dir, s.Forward)
+	}
+	log.Printf("[asr] listening on %s, upstream %s (point asrv3.hivoice.cn here)", addr, snap.Upstream)
+	if snap.DumpDir != "" {
+		log.Printf("[asr] dumping requests/responses to %s", snap.DumpDir)
+	}
+	s.cap = newCapture(s.Settings)
+	if snap.AudioDir != "" || snap.Forward != "" || snap.NLUMode == "custom" {
+		log.Printf("[asr] audio capture on: dir=%q forward=%q nlu=%s", snap.AudioDir, snap.Forward, snap.NLUMode)
 	}
 	for {
 		conn, err := ln.Accept()
@@ -92,22 +135,43 @@ func (s *Server) handle(c net.Conn) {
 		if err != nil {
 			return
 		}
+		snap := s.Settings.Snapshot()
+		s.intercepts.Add(1)
 		seq := atomic.AddUint64(&s.seq, 1)
-		if s.DumpDir != "" {
-			s.dump(seq, "req", msg.hdr, msg.body)
+		if snap.DumpDir != "" {
+			s.dump(snap.DumpDir, seq, "req", msg.hdr, msg.body)
 		}
 		if isMediaRequest(msg.hdr) {
 			_ = c.SetWriteDeadline(time.Now().Add(60 * time.Second))
 			serveMedia(c, msg)
 			return
 		}
-		if s.cap != nil {
-			s.cap.add(msg.hdr, msg.body)
+		// External NLU: answer the final request with our own service result.
+		if snap.NLUMode == "custom" && snap.NLUURL != "" && isFinalRequest(msg.hdr) {
+			if sid, ogg := s.cap.FinalizeSID(msg.hdr); ogg != nil {
+				s.nluCalls.Add(1)
+				if body, err := postNLU(snap, sid, ogg); err == nil {
+					out := nluResponse(sid, body)
+					if snap.DumpDir != "" {
+						h, b := splitHTTP(out)
+						s.dump(snap.DumpDir, seq, "resp", h, b)
+					}
+					_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))
+					if _, err := c.Write(out); err != nil {
+						return
+					}
+					continue
+				} else {
+					log.Printf("[asr] custom nlu: %v (falling back to cloud)", err)
+					s.setErr(err)
+				}
+			}
 		}
-		out := s.process(msg)
-		if s.DumpDir != "" {
+		s.cap.add(msg.hdr, msg.body)
+		out := s.process(msg, snap)
+		if snap.DumpDir != "" {
 			h, b := splitHTTP(out)
-			s.dump(seq, "resp", h, b)
+			s.dump(snap.DumpDir, seq, "resp", h, b)
 		}
 		_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))
 		if _, err := c.Write(out); err != nil {
@@ -117,16 +181,19 @@ func (s *Server) handle(c net.Conn) {
 }
 
 // dump writes header/body files and appends a one-line summary.
-func (s *Server) dump(seq uint64, kind string, hdr, body []byte) {
-	_ = os.MkdirAll(s.DumpDir, 0o755)
-	base := filepath.Join(s.DumpDir, fmt.Sprintf("%04d_%s", seq, kind))
+func (s *Server) dump(dir string, seq uint64, kind string, hdr, body []byte) {
+	if dir == "" {
+		return
+	}
+	_ = os.MkdirAll(dir, 0o755)
+	base := filepath.Join(dir, fmt.Sprintf("%04d_%s", seq, kind))
 	_ = os.WriteFile(base+".hdr", hdr, 0o644)
 	_ = os.WriteFile(base+".bin", body, 0o644)
 
 	line := fmt.Sprintf("%s #%04d %s %s\n",
 		time.Now().Format("2006-01-02 15:04:05.000"), seq, kind, oneLine(string(hdr)))
 	_ = os.WriteFile(base+".txt", []byte(line+hex.Dump(firstN(body, 256))), 0o644)
-	if f, err := os.OpenFile(filepath.Join(s.DumpDir, "index.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
+	if f, err := os.OpenFile(filepath.Join(dir, "index.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
 		_, _ = f.WriteString(line + fmt.Sprintf("    body=%d first32=%s\n", len(body), hex.EncodeToString(firstN(body, 32))))
 		_ = f.Close()
 	}
@@ -135,14 +202,22 @@ func (s *Server) dump(seq uint64, kind string, hdr, body []byte) {
 	}
 }
 
-func (s *Server) process(msg *message) []byte {
-	upAddr := s.Upstream
+func (s *Server) process(msg *message, snap Snapshot) []byte {
+	upAddr := snap.Upstream
 	if upAddr == "" {
-		upAddr = "47.102.50.144:80"
+		ip, err := s.dns.Resolve(context.Background(), snap.DNS)
+		if err != nil {
+			log.Printf("[asr] upstream resolve: %v", err)
+			s.setErr(err)
+			return []byte("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+		}
+		upAddr = ip
 	}
 	up, err := net.DialTimeout("tcp", upAddr, 10*time.Second)
 	if err != nil {
-		log.Printf("[asr] upstream dial: %v", err)
+		log.Printf("[asr] upstream dial %s: %v", upAddr, err)
+		s.dns.Invalidate()
+		s.setErr(err)
 		return []byte("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
 	}
 	defer up.Close()
@@ -169,11 +244,23 @@ func (s *Server) process(msg *message) []byte {
 	if _, isText := d.Body.(string); isText {
 		return resp.raw
 	}
-	if s.NoMusic {
+	// Skill routing: first matching rule wins. "builtin" falls through to the
+	// music handling / passthrough below.
+	if len(snap.Skills) > 0 {
+		code, text := cloudFields(d.Body)
+		if sk := matchSkill(snap.Skills, code, text); sk != nil {
+			sid := audioSessionID(msg.hdr)
+			if out, handled := runSkill(*sk, sid, code, text); handled {
+				log.Printf("[asr] skill %q handled code=%s text=%q", sk.Name, code, text)
+				return out
+			}
+		}
+	}
+	if !snap.Music {
 		return resp.raw
 	}
 	p := music.New(d)
-	p.MediaBase = s.MediaBase
+	p.MediaBase = snap.MediaBase
 	if !p.IsMusic() {
 		return resp.raw
 	}
@@ -181,6 +268,9 @@ func (s *Server) process(msg *message) []byte {
 	defer cancel()
 	if err := p.Search(ctx); err != nil {
 		log.Printf("[asr] search %q: %v", p.Keyword(), err)
+		s.setErr(err)
+	} else {
+		s.musicHits.Add(1)
 	}
 	if s.Verbose {
 		log.Printf("[asr] music intent keyword=%q", p.Keyword())
@@ -368,4 +458,9 @@ func firstN(b []byte, n int) []byte {
 		return b
 	}
 	return b[:n]
+}
+
+// audioSessionID extracts the session id from a request header block.
+func audioSessionID(hdr []byte) string {
+	return audio.SessionID(hdr)
 }

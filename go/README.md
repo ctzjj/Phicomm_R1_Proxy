@@ -137,3 +137,32 @@ r1tool audiodump -dir ./dump -out ./audio
 > 有凭据后按同一接口补一个实现即可，多源合并逻辑已就绪。
 
 新增音源只需实现 `music.Source`（`Name` + `Search`）并加入 `DefaultSources()`。
+
+## Web 控制台（内嵌）
+
+```sh
+r1tool asr -addr 0.0.0.0:8080 -web-port 8899 -config r1tool.json
+```
+
+打开 `http://<本机IP>:8899`，可在线修改并**立即生效**：上游 ASR（留空 = 用 `-dns` 指定的 DNS
+解析 `asrv3.hivoice.cn` 拿真实 IP，默认 223.5.5.5）、媒体代理 base、点歌开关、音频转发 URL、
+NLU 模式（默认云知声 / 自定义地址 + Key + Key 头）、技能路由；右侧是实时日志（SSE）。
+
+### 技能路由（skills）
+
+```json
+[
+  {"name":"闲聊","match":{"type":"chat"},
+   "action":{"type":"llm","url":"http://127.0.0.1:9000/chat","key":"sk-...","keyHeader":"Authorization"}},
+  {"name":"开灯","match":{"type":"keyword","pattern":"(开灯|把灯打开)"},
+   "action":{"type":"http","method":"POST","url":"http://127.0.0.1:9000/api/light/on","body":"{\"on\":1}","reply":"好的，已开灯"}},
+  {"name":"其它指令","match":{"type":"command"},"action":{"type":"builtin"}}
+]
+```
+
+- `match.type`：`chat` 闲聊 / `command` 指令 / `keyword` 正则 / `code` 意图码 / `any` 兜底；
+  按顺序匹配，**第一条命中即执行**
+- `action.type`：`builtin` 保留内置行为（点歌替换/透传）/ `llm` POST `{"text","sid","code"}`，
+  返回 `{"text"}`、`{"reply"}` 或完整音箱 JSON / `http` 调用你的 API（body 支持
+  `{{text}}` `{{asr}}` `{{sid}}` `{{code}}`，回复文案用 `reply` 或响应体）
+- 设置持久化在 `-config`（默认 `r1tool.json`），下次启动自动加载
