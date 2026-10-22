@@ -30,6 +30,7 @@ go build -o r1tool ./cmd/r1tool
 | --- | --- |
 | `go/` | Go 实现（唯一实现，原 PHP 版本已移除） |
 | `root/` | R1 提权（CVE-2019-2215）+ 一键 root + 开机持久化，见 [root/README.md](root/README.md) |
+| `doc/nlu-protocol.md` | 语音上传/响应协议（抓包实测，自建 NLU/大模型服务按此格式返回） |
 | `doc/返回数据格式` | 语音服务返回样例（GBK 编码，历史文档） |
 
 ## 备注

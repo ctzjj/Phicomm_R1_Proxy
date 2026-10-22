@@ -31,6 +31,7 @@ commands:
   home        simple TCP echo server
   wifi        list the Wi-Fi networks seen by the speaker (provisioning mode)
   provision   make the speaker join a Wi-Fi network (one-key pairing)
+  audiodump   convert a "asr -dump" directory into per-utterance Ogg/Opus files
 
 run "r1tool <command> -h" for the flags of a command.
 `
@@ -53,6 +54,8 @@ func main() {
 		err = runWifi(os.Args[2:])
 	case "provision":
 		err = runProvision(os.Args[2:])
+	case "audiodump":
+		err = runAudioDump(os.Args[2:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return
@@ -78,11 +81,15 @@ func runASR(args []string) error {
 	addr := fs.String("addr", ":80", "listen address (must be reachable as asrv3.hivoice.cn)")
 	upstream := fs.String("upstream", "47.102.50.144:80", "real ASR server host:port")
 	verbose := fs.Bool("v", false, "log every intercepted answer")
+	dumpDir := fs.String("dump", "", "directory to dump raw request/response (headers, body, hexdump)")
+	audioDir := fs.String("audio-dir", "", "write each utterance as Ogg/Opus into this directory")
+	forward := fs.String("forward", "", "POST each utterance Ogg to this URL (audio/ogg)")
 	_ = fs.Parse(args)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	s := &asr.Server{Addr: *addr, Upstream: *upstream, Verbose: *verbose}
+	s := &asr.Server{Addr: *addr, Upstream: *upstream, Verbose: *verbose, DumpDir: *dumpDir,
+		AudioDir: *audioDir, Forward: *forward}
 	return s.ListenAndServe(ctx)
 }
 

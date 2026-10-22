@@ -95,4 +95,23 @@ go/
 go test ./...
 ```
 
-覆盖：HTTP 消息重建、点歌意图正则、AES-128-ECB（FIPS-197 向量）、配网接口解析。
+覆盖：HTTP 消息重建、点歌意图正则、AES-128-ECB（FIPS-197 向量）、配网接口解析、Ogg/Opus 封装。
+
+## 语音音频与协议
+
+`r1tool asr` 可以把每句话的 Opus 音频按会话聚合并落盘/转发：
+
+```sh
+# 落盘：每句一个 Ogg/Opus（16 kHz 单声道，可直接 ffmpeg 转 WAV）
+r1tool asr -addr 127.0.0.1:8080 -audio-dir ./audio
+
+# 转发：POST audio/ogg 到自己的 ASR / 大模型服务
+r1tool asr -addr 127.0.0.1:8080 -audio-dir ./audio -forward http://127.0.0.1:9000/asr
+
+# 离线转换已抓到的 dump
+r1tool audiodump -dir ./dump -out ./audio
+```
+
+上传/响应的完整协议（响应头 `CT/RS/PN/SID`、`code`/`semantic.intent.operations`、
+点歌 `data.result.musicinfo`、最小可用 JSON 等）见
+[`../doc/nlu-protocol.md`](../doc/nlu-protocol.md)。
