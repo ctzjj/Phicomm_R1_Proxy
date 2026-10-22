@@ -69,6 +69,9 @@ sh /sdcard/r1root/persist.sh /sdcard/r1root
 
 - **adb 连不上**：确认已配网；或让音箱进入配网模式（`Phicomm_R1_xxxx` 热点，
   `adb connect 192.168.43.1:5555`），配网完成后回到局域网 IP。
+- **工厂/配网热点密码**：工厂模式热点 `Phi_<MAC>`，密码 `fei123456`；
+  隐藏切换热点 `Phi_SwitchFctyMod_GIF87A` / `fei123456`。详见 `../README.md` 的
+  「工厂 / 配网模式」一节。
 - **:9090 不通**：`adb shell am startservice -n com.phicomm.speaker.ijetty/.IJettyService`
   后等 2-3 秒；工厂模式开机时该服务会自动启动。
 - **脚本执行后没有 :31337**：看输出里的 `selinux:` 是否为 `Permissive`；

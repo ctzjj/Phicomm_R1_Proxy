@@ -57,6 +57,23 @@ sh persist.sh /sdcard/r1root
 同时把 `/system/bin/rild` 换成 rootd 作为双保险（需 `chcon u:object_r:rild_exec:s0`）。
 所有被替换文件均有 `.r1bak` 备份。
 
+## 工厂 / 配网模式（救砖与初始配置）
+
+| 模式 | SSID | 密码 | 说明 |
+| --- | --- | --- | --- |
+| 工厂模式 | `Phi_<MAC>` | `fei123456` | 产测热点（WPA2）。该模式下 IJetty（`:9090`）随系统自动启动，`onkey` 依赖的 uid1000 命令执行入口无需再手动拉起 |
+| 工厂模式切换 | `Phi_SwitchFctyMod_GIF87A` | `fei123456` | SystemTool 的隐藏切换热点，用于进入/退出工厂模式 |
+| 正常配网 | `Phicomm_R1_<后4位>` | 未提取 | 配网接口在 `:8989`（`GET /api/wifilist`、`POST /api/configwifi`） |
+
+- 密码来源：`ProductionTest/WifiP2P.java`（`DEFAULT_SSID = "Phi_"`、`DEFAULT_PASSWORD = "fei123456"`）
+  与 `SystemTool/MainService.java`（`SWITCH_WIFI_SSID = "Phi_SwitchFctyMod_GIF87A"`、`SWITCH_WIFI_PWD = "fei123456"`）。
+- 进入工厂模式（uid1000 或 root）：`service call FXSystemPrivate 1 i32 1`；
+  退回正常模式：`service call FXSystemPrivate 1 i32 0`。写入 `/private/factory.conf`，**重启后生效**。
+- 工厂模式启动时会清理 `/cache`、`/data/local.prop`、`/data/etc`（`onkey` 每次都会重新写入，不受影响）。
+- 救砖流程：若开机后没有连上家里的 WiFi，用手机/PC 连 `Phi_*`（密码 `fei123456`），
+  工厂模式热点网关固定为 `192.168.43.1` → `adb connect 192.168.43.1:5555`，
+  执行 `setSysMode(0)` 后重启即回到正常模式。
+
 ## 风险提示
 
 - `rootd` 监听 `0.0.0.0:31337` 且不需要认证，**局域网内任何人都能拿到 root**。
