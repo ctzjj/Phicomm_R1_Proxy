@@ -74,7 +74,7 @@ type Format struct {
 	RC             int    `json:"rc"`
 	General        any    `json:"general"`
 	ReturnCode     int    `json:"returnCode"`
-	AudioURL       string `json:"audioUrl"`
+	AudioURL       string `json:"audioUrl,omitempty"`
 	RetTag         string `json:"retTag"`
 	Service        string `json:"service"`
 	NluProcessTime string `json:"nluProcessTime"`
@@ -93,7 +93,7 @@ func NewFormat() *Format {
 		RC:             0,
 		General:        map[string]any{"actionAble": "true", "quitDialog": "true", "text": "为您播放", "type": "T"},
 		ReturnCode:     0,
-		AudioURL:       "http://asrv3.hivoice.cn/trafficRouter/r/wMgclE",
+		AudioURL:       "", // no stale TTS URL: let the local TTS announce, otherwise the player stays paused
 		RetTag:         "nlu",
 		Service:        "cn.yunzhisheng.music",
 		NluProcessTime: "106",

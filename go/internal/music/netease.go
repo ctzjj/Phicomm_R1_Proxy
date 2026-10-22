@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -96,9 +98,98 @@ func (n *Netease) Search(ctx context.Context, keyword string, f *Format) error {
 		it.URL = u
 		list.Add(it)
 	}
-	f.SetTotal(len(list.Items()))
-	f.SetItems(list.Items())
+	// The speaker starts playback only when the first track prepares quickly,
+	// so probe the urls and put the fastest reachable one first.
+	items := ProbeOrder(ctx, list.Items())
+	f.SetTotal(len(items))
+	f.SetItems(items)
 	return nil
+}
+
+// ProbeOrder HEADs every url concurrently and returns the reachable ones
+// ordered so that the speaker can start playback reliably:
+//  1. urls served by a plain nginx CDN (the R1 MediaPlayer chokes on some
+//     object-store responses such as openresty's Content-Disposition/x-nos-*
+//     headers -> the track prepares but never starts)
+//  2. fastest first
+// When nothing is reachable the input order is kept.
+func ProbeOrder(ctx context.Context, items []Item) []Item {
+	type res struct {
+		it     Item
+		d      time.Duration
+		ok     bool
+		plain  bool
+		length bool
+	}
+	ch := make(chan res, len(items))
+	var wg sync.WaitGroup
+	for _, it := range items {
+		wg.Add(1)
+		go func(it Item) {
+			defer wg.Done()
+			req, err := http.NewRequestWithContext(ctx, http.MethodHead, it.URL, nil)
+			if err != nil {
+				ch <- res{it: it}
+				return
+			}
+			req.Header.Set("Range", "bytes=0-0")
+			cl := &http.Client{Timeout: 1500 * time.Millisecond}
+			t0 := time.Now()
+			resp, err := cl.Do(req)
+			if err != nil {
+				ch <- res{it: it}
+				return
+			}
+			_ = resp.Body.Close()
+			srv := strings.ToLower(resp.Header.Get("Server"))
+			ct := strings.ToLower(resp.Header.Get("Content-Type"))
+			plain := !strings.Contains(srv, "openresty") &&
+				resp.Header.Get("Content-Disposition") == ""
+			ch <- res{
+				it:     it,
+				d:      time.Since(t0),
+				ok:     (resp.StatusCode == 200 || resp.StatusCode == 206) && strings.HasPrefix(ct, "audio/"),
+				plain:  plain,
+				length: resp.ContentLength > 0,
+			}
+		}(it)
+	}
+	wg.Wait()
+	close(ch)
+
+	var good []res
+	for r := range ch {
+		if r.ok && r.length {
+			good = append(good, r)
+		}
+	}
+	if len(good) == 0 {
+		return items
+	}
+	hasPlain := false
+	for _, r := range good {
+		if r.plain {
+			hasPlain = true
+			break
+		}
+	}
+	sort.Slice(good, func(i, j int) bool {
+		if good[i].plain != good[j].plain {
+			return good[i].plain
+		}
+		return good[i].d < good[j].d
+	})
+	out := make([]Item, 0, len(good))
+	for _, r := range good {
+		if hasPlain && !r.plain {
+			continue // prefer urls the R1 player can actually start
+		}
+		out = append(out, r.it)
+	}
+	if len(out) > 10 {
+		out = out[:10]
+	}
+	return out
 }
 
 // songURL resolves the direct mp3 url of one song.
@@ -108,7 +199,7 @@ func (n *Netease) songURL(ctx context.Context, id int64) (string, error) {
 		"url":    "http://music.163.com/api/song/enhance/player/url",
 		"params": map[string]any{
 			"ids": []int64{id},
-			"br":  320000,
+			"br":  128000,
 		},
 	}
 	var res struct {

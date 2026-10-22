@@ -84,12 +84,13 @@ func runASR(args []string) error {
 	dumpDir := fs.String("dump", "", "directory to dump raw request/response (headers, body, hexdump)")
 	audioDir := fs.String("audio-dir", "", "write each utterance as Ogg/Opus into this directory")
 	forward := fs.String("forward", "", "POST each utterance Ogg to this URL (audio/ogg)")
+	noMusic := fs.Bool("no-music", false, "pass music answers through without replacing them")
 	_ = fs.Parse(args)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	s := &asr.Server{Addr: *addr, Upstream: *upstream, Verbose: *verbose, DumpDir: *dumpDir,
-		AudioDir: *audioDir, Forward: *forward}
+		AudioDir: *audioDir, Forward: *forward, NoMusic: *noMusic}
 	return s.ListenAndServe(ctx)
 }
 

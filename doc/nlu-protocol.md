@@ -1,4 +1,4 @@
-# 音箱语音接口协议（抓包实测）
+﻿# 音箱语音接口协议（抓包实测）
 
 > 本文是劫持 `asrv3.hivoice.cn` 后从真实流量中整理的请求/响应格式，供自建 NLU / 大模型服务时**按同样格式返回**，让音箱能正常识别和执行。
 > 抓包样本：`r1tool asr -dump <dir>` 生成的 `*_req.hdr/.bin`、`*_resp.hdr/.bin`。
@@ -114,6 +114,13 @@ Content-Length: <JSON 长度>
 ```
 
 必要字段：`data.result.musicinfo[].url`（可播放直链）、`title`、`artist`；`count` 与实际条数一致。
+
+> **实测坑（重要）**：R1 的 MediaPlayer 对部分对象存储 CDN 的响应不兼容——
+> `Server: openresty` + `Content-Disposition` / `x-nos-*` 头的链接会让播放器停在
+> `MEDIA_PREPARING`（`total_time=0`，随后判为失败切下一首）。
+> 优先使用 `Server: nginx`、`Content-Type: audio/mpeg`、带 `Content-Length` 的直链；
+> 自建服务建议自己用 200/206 + `Accept-Ranges: bytes` 代理音频，避免这些头。
+> `r1tool` 已内置 HEAD 探测：并发测速并优先挑选 nginx CDN 的链接（见 `music.ProbeOrder`）。
 
 ### 3.4 其它意图
 

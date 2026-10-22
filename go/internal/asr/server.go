@@ -34,6 +34,7 @@ type Server struct {
 	DumpDir  string // when set, every request/response is written to this directory
 	AudioDir string // when set, each utterance is written as <dir>/uttNN_<sid>.ogg
 	Forward  string // when set, each utterance Ogg is POSTed to this URL
+	NoMusic  bool   // when set, music answers are passed through untouched
 	seq      uint64
 	cap      *capture
 }
@@ -160,6 +161,9 @@ func (s *Server) process(msg *message) []byte {
 	// Only JSON bodies can carry a music intent; anything else is passed
 	// through byte-for-byte.
 	if _, isText := d.Body.(string); isText {
+		return resp.raw
+	}
+	if s.NoMusic {
 		return resp.raw
 	}
 	p := music.New(d)
