@@ -1,4 +1,4 @@
-# Phicomm_R1_Proxy
+﻿# Phicomm_R1_Proxy
 
 斐讯 R1 音箱工具集（Go 实现）：语音识别中间人、绑定、配网、提权。
 
@@ -31,6 +31,7 @@ go build -o r1tool ./cmd/r1tool
 | `go/` | Go 实现（唯一实现，原 PHP 版本已移除） |
 | `root/` | R1 提权（CVE-2019-2215）+ 一键 root + 开机持久化，见 [root/README.md](root/README.md) |
 | `doc/nlu-protocol.md` | 语音上传/响应协议（抓包实测，自建 NLU/大模型服务按此格式返回） |
+| `doc/voice-assistant.md` | 语音助手链路调研（唤醒/录音/上传/意图/音乐链路与已知坑） |
 | `doc/返回数据格式` | 语音服务返回样例（GBK 编码，历史文档） |
 
 ## 备注

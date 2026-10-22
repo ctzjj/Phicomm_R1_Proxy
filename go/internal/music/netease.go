@@ -10,9 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,6 +27,9 @@ type Netease struct {
 	Endpoint string
 }
 
+// Name implements Source.
+func (n *Netease) Name() string { return "netease" }
+
 // NewNetease returns a Netease provider.
 func NewNetease() *Netease {
 	return &Netease{
@@ -40,6 +41,7 @@ func NewNetease() *Netease {
 type neteaseSong struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
+	Dt   int    `json:"dt"` // duration (ms)
 	Ar   []struct {
 		Name string `json:"name"`
 	} `json:"ar"`
@@ -58,9 +60,12 @@ type neteaseSearchResult struct {
 	} `json:"result"`
 }
 
-// Search fills f with up to 20 Netease results for keyword.
-func (n *Netease) Search(ctx context.Context, keyword string, f *Format) error {
-	const pageSize = 20
+// Search returns up to limit playable Netease tracks (320 kbps when the
+// account allows it).
+func (n *Netease) Search(ctx context.Context, keyword string, limit int) ([]Item, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 20
+	}
 	payload := map[string]any{
 		"method": "POST",
 		"url":    "http://music.163.com/api/cloudsearch/pc",
@@ -68,17 +73,18 @@ func (n *Netease) Search(ctx context.Context, keyword string, f *Format) error {
 			"s":      keyword,
 			"type":   "1",
 			"offset": "0",
-			"limit":  pageSize,
+			"limit":  limit,
 		},
 	}
 	var res neteaseSearchResult
 	if err := n.call(ctx, payload, &res); err != nil {
-		return err
+		return nil, err
 	}
-	f.SetPageSize(pageSize)
-
-	list := &ItemList{}
+	items := make([]Item, 0, limit)
 	for _, s := range res.Result.Songs {
+		if len(items) >= limit {
+			break
+		}
 		if s.Privilege.Fl == 0 { // no copyright / not playable
 			continue
 		}
@@ -93,103 +99,12 @@ func (n *Netease) Search(ctx context.Context, keyword string, f *Format) error {
 			it.Artist = s.Ar[0].Name
 		}
 		it.HdImgURL = s.Al.PicURL
-		it.Lyric = ""
-		it.IsCollected = false
 		it.URL = u
-		list.Add(it)
+		it.Bitrate = 320
+		it.Duration = s.Dt
+		items = append(items, *it)
 	}
-	// The speaker starts playback only when the first track prepares quickly,
-	// so probe the urls and put the fastest reachable one first.
-	items := ProbeOrder(ctx, list.Items())
-	f.SetTotal(len(items))
-	f.SetItems(items)
-	return nil
-}
-
-// ProbeOrder HEADs every url concurrently and returns the reachable ones
-// ordered so that the speaker can start playback reliably:
-//  1. urls served by a plain nginx CDN (the R1 MediaPlayer chokes on some
-//     object-store responses such as openresty's Content-Disposition/x-nos-*
-//     headers -> the track prepares but never starts)
-//  2. fastest first
-// When nothing is reachable the input order is kept.
-func ProbeOrder(ctx context.Context, items []Item) []Item {
-	type res struct {
-		it     Item
-		d      time.Duration
-		ok     bool
-		plain  bool
-		length bool
-	}
-	ch := make(chan res, len(items))
-	var wg sync.WaitGroup
-	for _, it := range items {
-		wg.Add(1)
-		go func(it Item) {
-			defer wg.Done()
-			req, err := http.NewRequestWithContext(ctx, http.MethodHead, it.URL, nil)
-			if err != nil {
-				ch <- res{it: it}
-				return
-			}
-			req.Header.Set("Range", "bytes=0-0")
-			cl := &http.Client{Timeout: 1500 * time.Millisecond}
-			t0 := time.Now()
-			resp, err := cl.Do(req)
-			if err != nil {
-				ch <- res{it: it}
-				return
-			}
-			_ = resp.Body.Close()
-			srv := strings.ToLower(resp.Header.Get("Server"))
-			ct := strings.ToLower(resp.Header.Get("Content-Type"))
-			plain := !strings.Contains(srv, "openresty") &&
-				resp.Header.Get("Content-Disposition") == ""
-			ch <- res{
-				it:     it,
-				d:      time.Since(t0),
-				ok:     (resp.StatusCode == 200 || resp.StatusCode == 206) && strings.HasPrefix(ct, "audio/"),
-				plain:  plain,
-				length: resp.ContentLength > 0,
-			}
-		}(it)
-	}
-	wg.Wait()
-	close(ch)
-
-	var good []res
-	for r := range ch {
-		if r.ok && r.length {
-			good = append(good, r)
-		}
-	}
-	if len(good) == 0 {
-		return items
-	}
-	hasPlain := false
-	for _, r := range good {
-		if r.plain {
-			hasPlain = true
-			break
-		}
-	}
-	sort.Slice(good, func(i, j int) bool {
-		if good[i].plain != good[j].plain {
-			return good[i].plain
-		}
-		return good[i].d < good[j].d
-	})
-	out := make([]Item, 0, len(good))
-	for _, r := range good {
-		if hasPlain && !r.plain {
-			continue // prefer urls the R1 player can actually start
-		}
-		out = append(out, r.it)
-	}
-	if len(out) > 10 {
-		out = out[:10]
-	}
-	return out
+	return items, nil
 }
 
 // songURL resolves the direct mp3 url of one song.

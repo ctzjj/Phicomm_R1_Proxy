@@ -115,3 +115,20 @@ r1tool audiodump -dir ./dump -out ./audio
 上传/响应的完整协议（响应头 `CT/RS/PN/SID`、`code`/`semantic.intent.operations`、
 点歌 `data.result.musicinfo`、最小可用 JSON 等）见
 [`../doc/nlu-protocol.md`](../doc/nlu-protocol.md)。
+语音链路、唤醒/录音、音乐 CDN 兼容性等调研记录见
+[`../doc/voice-assistant.md`](../doc/voice-assistant.md)。
+
+## 多音源点歌
+
+`music.SearchAll` 会**并发**查询所有音源，按「标题+艺人」去重并**保留最高码率**的版本，
+然后用一次真实的 ranged GET 校验每个链接（音频魔数、Content-Type、大小 vs 时长），
+最后按「可播 → 码率 → 延迟」排序后返回：
+
+| 音源 | 搜索 | 播放地址 | 说明 |
+| --- | --- | --- | --- |
+| 网易云 | ✅ | ✅ 320k | `linux/forward` + `song/enhance/player/url` |
+| 酷我 | ✅ | ⚠️ 仅试听片段 | `search.kuwo.cn` + `anti.s`（会被大小/时长校验过滤） |
+| 酷狗 | ✅ | ❌ 需登录态 | `mobilecdn` 搜索可用，`play/getdata` 返回 30020 |
+| 咪咕 | ❌ | — | 旧接口已下线（301 到 v5 SPA） |
+
+新增音源只需实现 `music.Source`（`Name` + `Search`）并加入 `DefaultSources()`。

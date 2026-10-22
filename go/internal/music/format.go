@@ -18,6 +18,11 @@ type Item struct {
 	IsCollected bool   `json:"isCollected"`
 	Title       string `json:"title,omitempty"`
 	URL         string `json:"url,omitempty"`
+
+	// Internal metadata, never sent to the speaker.
+	Bitrate int    `json:"-"` // kbps
+	Size    int64  `json:"-"` // bytes
+	Origin  string `json:"-"` // provider that produced the item
 }
 
 // NewItem mirrors the PHP Item constructor (random id/duration placeholders;

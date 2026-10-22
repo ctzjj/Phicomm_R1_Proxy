@@ -2,6 +2,7 @@ package music
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -59,8 +60,9 @@ func (p *Provider) IsMusic() bool {
 	return false
 }
 
-// Search performs the Netease lookup and stores the formatted response in
-// the Data body (mirrors MusicProvider::search()).
+// Search queries all enabled sources concurrently, keeps the best-quality
+// version of every song, verifies the urls and stores the formatted response
+// in the Data body.
 func (p *Provider) Search(ctx context.Context) error {
 	body, _ := p.data.Body.(map[string]any)
 	f := NewFormat()
@@ -71,11 +73,20 @@ func (p *Provider) Search(ctx context.Context) error {
 	}
 	f.SetText(p.keyword)
 	f.SetAsrText(p.keyword)
-	if err := NewNetease().Search(ctx, p.keyword, f); err != nil {
-		// keep the template so the speaker still gets a valid answer
-		p.data.Body = f
-		return err
+	f.SetPageSize(20)
+
+	items, errs := SearchAll(ctx, p.keyword, DefaultSources(), 20)
+	if len(errs) > 0 && len(items) == 0 {
+		p.data.Body = f // keep the template so the speaker still gets a valid answer
+		return errs[0]
 	}
+	items = ProbeOrder(ctx, items)
+	if len(items) == 0 {
+		p.data.Body = f
+		return fmt.Errorf("music: no playable track for %q", p.keyword)
+	}
+	f.SetTotal(len(items))
+	f.SetItems(items)
 	p.data.Body = f
 	return nil
 }
