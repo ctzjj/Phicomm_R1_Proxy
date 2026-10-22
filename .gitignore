@@ -8,3 +8,8 @@ composer.phar
 
 ./.idea/*
 /.idea
+
+# Go build output
+/go/r1tool
+/go/r1tool.exe
+/go/dist/
