@@ -11,3 +11,5 @@ asr_proxy.php 语音劫持
 bind.php 音箱绑定
 
 小讯小讯，氛围灯，这样就可以打开音乐播放时候的氛围灯了
+
+root/ : Phicomm R1 root (CVE-2019-2215) - one-key root + boot persistence. See root/README.md
