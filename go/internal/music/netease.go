@@ -199,7 +199,7 @@ func (n *Netease) songURL(ctx context.Context, id int64) (string, error) {
 		"url":    "http://music.163.com/api/song/enhance/player/url",
 		"params": map[string]any{
 			"ids": []int64{id},
-			"br":  128000,
+			"br":  320000,
 		},
 	}
 	var res struct {
