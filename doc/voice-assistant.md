@@ -117,3 +117,13 @@ SEARCH_ARTIST / SEARCH_CATEGORY（或我们兜底）
 
 多源框架已就绪：实现 `music.Source`（`Name`/`Search`）后加入 `DefaultSources()` 即可自动参与
 「并发搜索 → 去重选最优音质 → ranged GET 校验 → 过滤试听 → 按可播/码率/延迟排序」。
+## 9. 音乐走代理（/media）
+
+生成点歌响应时，`r1tool` 会把每首歌的 `url` 改写成
+`http://aios-home.hivoice.cn:<代理端口>/media?u=<base64url(原始地址)>`，
+音箱来取流时由代理转发并**重写响应头**（去掉 `Content-Disposition`/`x-nos-*`，
+统一 `Content-Type: audio/mpeg` + `Content-Length` + `Accept-Ranges`，支持 Range）。
+
+- 默认用 `aios-home.hivoice.cn`（反正已经劫持到本机），换机器/换端口不需要改代码
+- 需要覆盖时用 `r1tool asr -media-base http://your.host:port`
+- 要求：该域名已按第 1 节劫持到运行代理的机器，且代理端口对音箱可达

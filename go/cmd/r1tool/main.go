@@ -79,8 +79,10 @@ func runBind(args []string) error {
 }
 
 // mediaBaseOf returns the base URL the speaker should use for /media.
-// An explicit override wins; otherwise the first ordinary LAN IPv4 address
-// (preferring 192.168.x) plus the -addr port is used.
+// The default uses the hijacked aios-home.hivoice.cn host name (the same
+// domain the provisioning/binding hijack already points at this machine), so
+// the tool keeps working for anyone who follows the docs instead of baking in
+// one LAN address. -media-base overrides it (e.g. a different host or port).
 func mediaBaseOf(listen, override string) string {
 	if override != "" {
 		return strings.TrimRight(override, "/")
@@ -89,29 +91,7 @@ func mediaBaseOf(listen, override string) string {
 	if err != nil {
 		port = "8080"
 	}
-	var fallback string
-	ifaces, _ := net.Interfaces()
-	for _, ifc := range ifaces {
-		addrs, _ := ifc.Addrs()
-		for _, a := range addrs {
-			ipnet, ok := a.(*net.IPNet)
-			if !ok {
-				continue
-			}
-			ip := ipnet.IP.To4()
-			if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
-				continue
-			}
-			base := "http://" + ip.String() + ":" + port
-			if strings.HasPrefix(ip.String(), "192.168.") {
-				return base
-			}
-			if fallback == "" {
-				fallback = base
-			}
-		}
-	}
-	return fallback
+	return "http://aios-home.hivoice.cn:" + port
 }
 
 func runASR(args []string) error {
