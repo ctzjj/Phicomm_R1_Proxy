@@ -1,9 +1,10 @@
 # r1tool (Go)
 
-Phicomm R1 工具集的 Go 版本，等价实现仓库根目录的 PHP PoC（`bind.php`、`asr_proxy.php`、
-`home_server.php` 与 `src/Provider/*`），并新增**配网（Wi-Fi provisioning）**功能。
+Phicomm R1 工具集（Go 实现）：绑定、语音劫持、回显调试，以及**配网（Wi-Fi provisioning）**。
+原仓库中的 PHP PoC（`bind.php`、`asr_proxy.php`、`home_server.php` 与 `src/Provider/*`）已移除，
+下表的「原 PHP 版」列仅保留对照关系。
 
-只用 Go 标准库，无第三方依赖（PHP 版依赖 Swoole / Guzzle）。
+只用 Go 标准库，无第三方依赖（原 PHP 版依赖 Swoole / Guzzle）。
 
 ## 构建
 
@@ -17,7 +18,7 @@ go build -o r1tool ./cmd/r1tool
 
 ## 命令
 
-| 命令 | 对应 PHP | 说明 |
+| 命令 | 原 PHP 版 | 说明 |
 | --- | --- | --- |
 | `r1tool bind` | `bind.php` | 绑定辅助：把 `aios-home.hivoice.cn` 指到本机，`/getUserInfo` 返回 `{"status":"0"}`，音箱即认为已绑定 |
 | `r1tool asr` | `asr_proxy.php` | 语音劫持：把 `asrv3.hivoice.cn` 指到本机，转发到真实 ASR（默认 `47.102.50.144:80`），识别到点歌意图时用网易云搜索结果替换回复 |
@@ -80,9 +81,9 @@ r1tool provision -gw 192.168.43.1 -ssid Tomato -pass 'wlan@518' -secure WPA
 go/
 ├── cmd/r1tool/          命令行入口
 └── internal/
-    ├── asr/             asr_proxy.php 等价实现
-    ├── bind/            bind.php 等价实现
-    ├── home/            home_server.php 等价实现
+    ├── asr/             语音劫持 TCP 代理（原 asr_proxy.php）
+    ├── bind/            绑定接口（原 bind.php）
+    ├── home/            回显服务（原 home_server.php）
     ├── music/           点歌意图识别 + 网易云/咪咕/酷狗 + 数据模板
     ├── provision/       配网客户端（wifilist / configwifi）
     └── util/            HTTP 消息解析与 Content-Length 重建
