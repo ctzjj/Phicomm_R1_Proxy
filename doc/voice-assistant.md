@@ -49,7 +49,7 @@ body = [uint16 LE 长度][Opus 包] ...   （16 kHz 单声道，20 ms/包，TOC=
 
 ## 4. 响应格式与意图判定
 
-详见 [`nlu-protocol.md`](nlu-protocol.md)。要点：
+详见 [`nlu-protocol.md`](nlu-protocol.md)。要点（源码级逆向全记录见 [`nlu-domains.md`](nlu-domains.md)）：
 
 - **不是本地规则判断**：云端 NLU 在预定义意图体系上做分类 + 槽位抽取，返回 `code`/`service`/`semantic.intent.operations`
 - 本地只有离线命令词表（`assets/nlu/unidrive_main_nlu_offline.conf`、`assets/commands/user_commands_config.xml`）

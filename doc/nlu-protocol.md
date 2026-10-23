@@ -2,6 +2,8 @@
 
 > 本文是劫持 `asrv3.hivoice.cn` 后从真实流量中整理的请求/响应格式，供自建 NLU / 大模型服务时**按同样格式返回**，让音箱能正常识别和执行。
 > 抓包样本：`r1tool asr -dump <dir>` 生成的 `*_req.hdr/.bin`、`*_resp.hdr/.bin`。
+>
+> **意图分类 / 全部 code / operator / 调用链的源码级逆向**见 [`nlu-domains.md`](nlu-domains.md)（含对本文 §3.1/§3.2 样例的字段更正）。
 
 ## 1. 上传流程（客户端 → 服务端）
 
