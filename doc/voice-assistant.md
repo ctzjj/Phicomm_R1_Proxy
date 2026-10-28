@@ -17,6 +17,31 @@
 劫持方式（已验证）：路由器把 `asrv3.hivoice.cn`、`aios-home.hivoice.cn` 指向 PC，
 WSL nginx 按 `server_name` 反代到 `r1tool asr`（127.0.0.1:8080）与绑定服务。
 
+### 1.1 劫持域名与监听端口总表（部署必读）
+
+| 劫持域名 | 设备实际访问 | PC 侧监听 | 服务 |
+| --- | --- | --- | --- |
+| `asrv3.hivoice.cn` | 任意端口，实际用 `:80` | nginx(WSL) `:80` → `r1tool asr`(WSL `127.0.0.1:8080`) | 语音流转发/本地 NLU(media 也走此域名，见 §9) |
+| `aios-home.hivoice.cn` | URL 明确带端口 `:19999` | `r1tool bind`(默认 `0.0.0.0:19999`) | `/getUserInfo` 绑定应答（NLU 前置必需）、日志上报 |
+| —（可选 `msg-pandora.hivoice.cn`） | MQTT 8883 | 未实现 | 暂直连云端 |
+
+当前机器实际监听端口：
+
+| 端口 | 进程/位置 | 作用 |
+| --- | --- | --- |
+| `80` | nginx（WSL） | asrv3 入口（`client_max_body_size 0`，流式转发） |
+| `8080` | `r1tool asr`（WSL，`127.0.0.1:8080`） | asrv3 代理 + audio capture/forward + custom NLU + /media |
+| `19999` | `r1tool bind`（Windows exe） | aios-home 绑定应答（设备 `POST /getUserInfo` 等） |
+| `9000` | ASR+SLU 服务（Windows，uvicorn） | `/asr` 转发目标 + `/nlu` 本地 NLU + `/pipeline` 调试 |
+
+要点：
+- **缺 19999 监听 = 设备一直"等待 NLU 回来"迟迟不响应，表现为 okhttp 30s 超时** —— 只要
+  DNS 已把 `aios-home.hivoice.cn` 劫持进场，`r1tool bind` 必须先于设备会话启动。
+- `asrv3.hivoice.cn` 与 `aios-home.hivoice.cn` **都要**在 DNS/hosts 劫持清单里；
+  只劫持 asrv3 会出现语音流正常但绑定/汇报流量直连真实云端（或 NXDOMAIN 失败）。
+- WSL 与 Windows 共享端口空间（mirrored networking）：同一端口只能一边监听；
+  `bind` 当前由 Windows 侧 `r1tool.exe` 占用，WSL 侧再绑会报 `address already in use`，属预期。
+
 ## 2. 唤醒与录音
 
 - 本地唤醒引擎：`libasrfix.so` + `assets/asrfix`，关键词 **"小讯小讯"**
@@ -120,10 +145,14 @@ SEARCH_ARTIST / SEARCH_CATEGORY（或我们兜底）
 ## 9. 音乐走代理（/media）
 
 生成点歌响应时，`r1tool` 会把每首歌的 `url` 改写成
-`http://aios-home.hivoice.cn:<代理端口>/media?u=<base64url(原始地址)>`，
+`http://<media-base 域名>:<端口>/media?u=<base64url(原始地址)>`，
 音箱来取流时由代理转发并**重写响应头**（去掉 `Content-Disposition`/`x-nos-*`，
 统一 `Content-Type: audio/mpeg` + `Content-Length` + `Accept-Ranges`，支持 Range）。
 
-- 默认用 `aios-home.hivoice.cn`（反正已经劫持到本机），换机器/换端口不需要改代码
-- 需要覆盖时用 `r1tool asr -media-base http://your.host:port`
-- 要求：该域名已按第 1 节劫持到运行代理的机器，且代理端口对音箱可达
+- 当前部署：`r1tool asr -media-base http://asrv3.hivoice.cn`（走被劫持的 asrv3 域名、80 端口，
+  设备 `GET /media?u=...` 仍回到 r1tool 的 serveMedia，免去额外域名/端口）
+- 换机器/换端口用 `-media-base http://your.host:port`
+- 要求：该域名已按 §1 劫持到运行代理的机器，且代理端口对音箱可达
+- **本地 NLU（`-nlu-mode custom -nlu-url .../nlu`）路径同样必须拿到 media 信息**：
+  custom 分支会把本地 NLU 的 music 意图继续用音乐 provider 覆盖成带 `musicinfo` 播放列表的完整响应
+  （`server.go` 中 `replaceMusic`），否则设备只拿到裸 SEARCH_SONG，取不到歌会报"请检查网络"。

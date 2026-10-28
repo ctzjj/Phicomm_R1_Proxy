@@ -232,6 +232,33 @@ code ∈ {SEARCH_SONG, SEARCH_SONGLIST, SEARCH_ALBUM, SEARCH_ARTIST,
    对象存储杂头会卡 PREPARING（见 nlu-protocol.md §3.3 实测坑）
 ```
 
+**广播电台**（`cn.yunzhisheng.broadcast`，独立分类，不是音乐）：
+
+```
+service=cn.yunzhisheng.broadcast
+→ DefaultMusicHandler.acceptInboundEvent0: serviceType=5 (setPriority 300)
+→ eventReceived case 5 → dealBroadcastPlayService:
+     result==null || result.getRate64TsUrl()==null
+         → TTS tts_music_no_find_broadcast（"找不到广播"）
+     否则 → MusicOutputEvents(true)
+            + TTS tts_broadcast_start_play(intent.getStation())
+            + setPlaylist([PlayItemAdapter.adaptBroadcast(result) → BroadcastItem])
+            + play(true)
+→ BroadcastItem getUrl() = data.result.rate64_ts_url；播放器同音乐 CommonPlayer，
+  字段名带 ts 但按普通 URL 播放（mp3 直链 200/206 可用）
+→ data.result 字段: audience_count, channel_id, cover_url_large, cover_url_small,
+   dataSourceName, description, errorCode, program_name, rate24_aac_url,
+   rate24_ts_url, rate64_aac_url, rate64_ts_url, schedule_id, source,
+   support_bitrates, title, totalTime, update_time
+→ semantic.intent: station（TTS 用此串）, channel/channelType/channelList,
+   frequencyList, frequency{frequency,type,unit}, msg, responseId
+```
+
+r1svc 落地：`data/radio.json`（本地电台表，qingting 64k mp3 直链）+
+`r1svc/radio.py`（原话→频率/台名匹配→broadcast 响应）+
+`asrproxy._try_music_overlay` 在音乐判断**之前**拦截；音频经 `/media?u=` 代理
+（直播流无 Content-Length；蜻蜓拒绝 HEAD(400) → GET 探头回退）。
+
 **播放控制**（`cn.yunzhisheng.setting.mp`，SETTING_EXEC_MP code）：
 
 ```

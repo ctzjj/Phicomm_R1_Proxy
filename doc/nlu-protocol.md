@@ -172,3 +172,34 @@ r1tool audiodump -dir ./dump -out ./audio
 ```
 
 后续版本会把「你服务返回的 JSON」直接回给音箱（等价于本文档第 3/4 节的格式），实现完整的语音助手替换。
+
+## 6. 广播电台域（broadcast）实测契约
+
+`service = "cn.yunzhisheng.broadcast"` 是独立域（不是音乐）。设备端
+`DefaultMusicHandler` serviceType=5 → `dealBroadcastPlayService`：
+**只要 `data.result.rate64_ts_url` 非空就自动 `play(true)`**，
+TTS 播报 `semantic.intent.station`；`BroadcastItem.getUrl()` 读的就是 `rate64_ts_url`
+（字段名带 ts，但按普通 URL 交给 CommonPlayer，mp3 直链可用）。
+
+r1svc 返回样例（音频走 `/media?u=<base64url>` 代理）：
+
+```json
+{"service":"cn.yunzhisheng.broadcast",
+ "code":"PLAY_BROADCAST",
+ "semantic":{"intent":{"station":"私家车987","type":"PLAY"}},
+ "data":{"result":{"title":"私家车987","program_name":"私家车987",
+   "channel_id":"1736","source":"qingting","dataSourceName":"蜻蜓FM",
+   "support_bitrates":"64","description":"私家车987",
+   "errorCode":0,"totalTime":0,
+   "rate24_aac_url":"","rate24_ts_url":"",
+   "rate64_aac_url":"","rate64_ts_url":"http://asrv3.hivoice.cn/media?u=..."}},
+ "general":{"actionAble":"true","quitDialog":"true",
+   "text":"正在为您播放私家车987","type":"T"},
+ "asr_recongize":"播放FM98.7广播","history":"cn.yunzhisheng.broadcast",
+ "text":"播放FM98.7广播","rc":0,"returnCode":0}
+```
+
+要点：
+
+* 本地电台表 `data/radio.json`（22 台，蜻蜓 64k mp3），FM98.7 = 福建都市生活广播(1736)
+* 直播流无 Content-Length；蜻蜓 HEAD 返回 400 → `/media` 的 HEAD 需用 GET 探头回退
