@@ -1,0 +1,26 @@
+{
+  "stations": [
+    {"name": "私家车987", "aliases": ["福建都市生活广播", "都市生活广播", "987私家车", "福建私家车"], "freq": "98.7", "qid": "1736", "url": "https://lhttp.qingting.fm/live/1736/64k.mp3"},
+    {"name": "福建交通广播", "aliases": ["福建交通"], "freq": "", "qid": "1733", "url": "https://lhttp.qingting.fm/live/1733/64k.mp3"},
+    {"name": "福建新闻综合广播", "aliases": ["福建新闻", "福建新闻综合"], "freq": "", "qid": "1731", "url": "https://lhttp.qingting.fm/live/1731/64k.mp3"},
+    {"name": "福建经济广播", "aliases": ["福建经济"], "freq": "", "qid": "1732", "url": "https://lhttp.qingting.fm/live/1732/64k.mp3"},
+    {"name": "中国之声", "aliases": ["央广中国之声", "中央人民广播电台"], "freq": "", "qid": "15318317", "url": "https://lhttp.qtfm.cn/live/15318317/64k.mp3"},
+    {"name": "北京新闻广播", "aliases": ["北京新闻"], "freq": "", "qid": "339", "url": "https://lhttp.qingting.fm/live/339/64k.mp3"},
+    {"name": "北京音乐广播", "aliases": ["北京音乐"], "freq": "", "qid": "332", "url": "https://lhttp.qtfm.cn/live/332/64k.mp3"},
+    {"name": "北京交通广播", "aliases": ["北京交通"], "freq": "", "qid": "336", "url": "https://lhttp.qingting.fm/live/336/64k.mp3"},
+    {"name": "上海交通广播", "aliases": ["上海交通"], "freq": "", "qid": "266", "url": "http://lhttp.qingting.fm/live/266/64k.mp3"},
+    {"name": "动感101", "aliases": ["动感一零一", "上海动感101"], "freq": "101.7", "qid": "274", "url": "https://lhttp.qingting.fm/live/274/64k.mp3"},
+    {"name": "上海经典音乐广播", "aliases": ["经典947", "上海经典947", "947"], "freq": "94.7", "qid": "267", "url": "http://lhttp.qingting.fm/live/267/64k.mp3"},
+    {"name": "第一财经广播", "aliases": ["第一财经", "上海第一财经"], "freq": "90.9", "qid": "276", "url": "http://lhttp.qingting.fm/live/276/64k.mp3"},
+    {"name": "广东新闻广播", "aliases": ["广东新闻"], "freq": "", "qid": "1254", "url": "https://lhttp.qtfm.cn/live/1254/64k.mp3"},
+    {"name": "广东交通之声", "aliases": ["广东交通"], "freq": "", "qid": "1262", "url": "https://lhttp.qtfm.cn/live/1262/64k.mp3"},
+    {"name": "广东音乐之声", "aliases": ["广东音乐"], "freq": "", "qid": "1260", "url": "https://lhttp.qtfm.cn/live/1260/64k.mp3"},
+    {"name": "珠江经济台", "aliases": ["珠江经济", "珠江台"], "freq": "", "qid": "1259", "url": "https://lhttp.qtfm.cn/live/1259/64k.mp3"},
+    {"name": "四川交通广播", "aliases": ["四川交通"], "freq": "", "qid": "4886", "url": "https://lhttp.qtfm.cn/live/4886/64k.mp3"},
+    {"name": "四川音乐广播", "aliases": ["四川音乐"], "freq": "", "qid": "1110", "url": "https://lhttp.qtfm.cn/live/1110/64k.mp3"},
+    {"name": "安徽交通广播", "aliases": ["安徽交通"], "freq": "", "qid": "1949", "url": "https://lhttp.qtfm.cn/live/1949/64k.mp3"},
+    {"name": "江苏经典流行音乐广播", "aliases": ["江苏经典流行", "江苏音乐"], "freq": "", "qid": "4938", "url": "https://lhttp.qtfm.cn/live/4938/64k.mp3"},
+    {"name": "深圳新闻广播", "aliases": ["深圳新闻"], "freq": "", "qid": "1270", "url": "http://lhttp.qingting.fm/live/1270/64k.mp3"},
+    {"name": "深圳交通广播", "aliases": ["深圳交通"], "freq": "", "qid": "1272", "url": "http://lhttp.qingting.fm/live/1272/64k.mp3"}
+  ]
+}

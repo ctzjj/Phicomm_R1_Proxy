@@ -1,0 +1,21 @@
+{
+  "listen_asr": "127.0.0.1:8080",
+  "listen_api": "127.0.0.1:9000",
+  "listen_bind": "0.0.0.0:19999",
+  "upstream": "",
+  "dns": "223.5.5.5:53",
+  "media_base": "http://asrv3.hivoice.cn",
+  "nlu_mode": "custom",
+  "nlu_key": "",
+  "nlu_key_header": "Authorization",
+  "dump_dir": "dump_raw",
+  "audio_dir": "dump_audio",
+  "bind_log": "bind_access.log",
+  "log_buf": 800,
+  "llm_chat": true,
+  "llm_api": "http://127.0.0.1:12345",
+  "web_search": true,
+  "music_enabled": true,
+  "music_limit": 20,
+  "probe_timeout_s": 3.0
+}

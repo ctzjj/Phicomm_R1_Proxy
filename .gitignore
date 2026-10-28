@@ -5,3 +5,17 @@
 /go/r1tool
 /go/r1tool.exe
 /go/dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# runtime data / models (kept out of git)
+data/config.json
+dump_raw/
+dump_audio/
+asr-slu/models/
+asr-slu/pkg/
+r1svc/asr_engine/MiniCPM-4.7/
+*.log

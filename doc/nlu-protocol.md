@@ -157,7 +157,7 @@ Content-Length: 96
  "asr_recongize":"打开蓝牙"}
 ```
 
-## 5. 与 r1tool 的配合
+## 5. 与 r1tool 的配合（上一代 Go 实现；现已由 r1svc（Python）取代，示例保留）
 
 ```sh
 # 抓音频（每句一个 Ogg/Opus，可直接 ffmpeg 解码）
